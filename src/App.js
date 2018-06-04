@@ -9,18 +9,19 @@ import moment from 'moment';
 class App extends Component {
   constructor(props) {
     super(props);
-    let dataProvider = this.props.dataProvider || new LocalStorageDataProvider();
-    let allTasks = this.getAvailableTasks(dataProvider);
+    this.dataProvider = this.props.dataProvider || new LocalStorageDataProvider();
+    let allTasks = this.getAvailableTasks(this.dataProvider);
     this.state = {
       searchText: '',
       enteredDescription: '',
       createNewTaskVisible: false,
       tasks: allTasks,
       matchingTasks: allTasks,
-      dataProvider: dataProvider,
       weekOffset: 0,
-      entries: this.getEntries(dataProvider)
+      entries: this.getEntries(this.dataProvider)
     };
+    this.getPermission();
+    this.audio = new Audio('sound.mp3');
   }
 
   getAvailableTasks = (dataProvider) => {
@@ -75,7 +76,7 @@ class App extends Component {
     this.handleTaskInput('');
     this.handleDescriptionInput('');
     this.setSelectedTask(taskName);
-    this.state.dataProvider.saveTask(task);
+    this.dataProvider.saveTask(task);
   }
 
   handleTaskInput = (inputValue) => {
@@ -126,11 +127,12 @@ class App extends Component {
   setWeekOffset = (newWeekOffset) => {
     this.setState({
       weekOffset: newWeekOffset,
-      entries: this.getEntries(this.state.dataProvider, newWeekOffset)
+      entries: this.getEntries(this.dataProvider, newWeekOffset)
     });
   }
 
   onWorkComplete = () => {
+    this.showNotification();
     let selectedTask = this.getSelectedTask();
     let date = moment().format('YYYY-MM-DD');
     let time = moment().format('HH:mm');
@@ -144,7 +146,30 @@ class App extends Component {
     this.setState({
       entries: entries
     });
-    this.state.dataProvider.saveEntry(newEntry);
+    this.dataProvider.saveEntry(newEntry);
+  }
+
+  getPermission = () => {
+    if (typeof Notification === 'undefined') {
+      return;
+    }
+    const app = this;
+    Notification.requestPermission().then(function(result) {
+        let notificationPermission = result === 'granted';
+        app.setState({
+          notificationPermission: notificationPermission
+        });
+    });
+  }
+
+  showNotification = () => {
+    if (typeof Notification === 'undefined') {
+      return;
+    }
+    if (this.state.notificationPermission) {
+      new Notification('Time\'s up!');
+      this.audio.play();
+    }
   }
 
   getRandomColor = () => {
